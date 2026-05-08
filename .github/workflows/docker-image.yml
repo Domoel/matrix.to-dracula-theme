@@ -1,7 +1,7 @@
 name: Build and Push Matrix-to Docker Image
 
 on:
-  workflow_dispatch: # Manueller Start
+  workflow_dispatch:
 
 jobs:
   build:
@@ -9,27 +9,26 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Generate Timestamp Tag
+      - name: Generate timestamp
         id: vars
-        run: echo "sha_short=$(date +%Y%m%d-%H%M)" >> $GITHUB_OUTPUT
+        run: echo "TAG=$(date +%Y%m%d-%H%M)" >> $GITHUB_ENV
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          tags: |
-            domoel/matrix-to:latest
-            domoel/matrix-to:${{ steps.vars.outputs.sha_short }}
-          no-cache: true
+      - name: Login to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+            -u "${{ secrets.DOCKER_USERNAME }}" \
+            --password-stdin
+
+      - name: Build image
+        run: |
+          docker build \
+            -t domoel/matrix-to:latest \
+            -t domoel/matrix-to:${TAG} \
+            .
+
+      - name: Push image
+        run: |
+          docker push domoel/matrix-to:latest
+          docker push domoel/matrix-to:${TAG}
